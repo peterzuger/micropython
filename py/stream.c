@@ -36,7 +36,7 @@
 // dispatch to the underlying stream interface of an object.
 
 // TODO: should be in mpconfig.h
-#define DEFAULT_BUFFER_SIZE 256
+#define DEFAULT_BUFFER_SIZE 512
 
 STATIC mp_obj_t stream_readall(mp_obj_t self_in);
 
@@ -369,7 +369,7 @@ STATIC mp_obj_t stream_unbuffered_readline(size_t n_args, const mp_obj_t *args) 
     if (max_size != -1) {
         vstr_init(&vstr, max_size);
     } else {
-        vstr_init(&vstr, 16);
+        vstr_init(&vstr, 64);   // TODO: 64 for now, maybe optimized later
     }
 
     while (max_size == -1 || max_size-- != 0) {
