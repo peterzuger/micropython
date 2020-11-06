@@ -82,8 +82,6 @@
 
 void __fatal_error(const char *msg);
 
-
-#ifndef MICROPY_BOARD_SYSTEMCLOCK_CONFIG
 /**
   * @brief  System Clock Configuration
   *
@@ -483,6 +481,5 @@ MP_WEAK void SystemClock_Config(void) {
     DBGMCU->CR |= (DBGMCU_CR_DBG_SLEEPD1 | DBGMCU_CR_DBG_STOPD1 | DBGMCU_CR_DBG_STANDBYD1);
     #endif
 }
-#endif  // MICROPY_BOARD_SYSTEMCLOCK_CONFIG
 
 #endif
