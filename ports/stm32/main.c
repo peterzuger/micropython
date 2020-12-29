@@ -154,6 +154,23 @@ STATIC mp_obj_t pyb_main(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_a
 MP_DEFINE_CONST_FUN_OBJ_KW(pyb_main_obj, 1, pyb_main);
 
 #if MICROPY_HW_ENABLE_STORAGE
+
+#ifdef MICROPY_HW_BDEV_HAS_MBR
+
+// avoid inlining to avoid stack usage within main()
+MP_NOINLINE STATIC bool init_flash_fs(uint reset_mode) {
+    if (reset_mode == 3) {
+        // Fill first block behind MBR with 512 bytes of value 0x03
+        // TODO: find a better way to transfer reset_mode to main.py
+        uint8_t blk1[FLASH_BLOCK_SIZE];
+        memset(blk1, 0x03, FLASH_BLOCK_SIZE);
+        storage_write_blocks(blk1, FLASH_PART1_START_BLOCK + 1, 1);
+    }
+    return true;
+}
+
+#else
+
 // avoid inlining to avoid stack usage within main()
 MP_NOINLINE STATIC bool init_flash_fs(uint reset_mode) {
     if (reset_mode == 3) {
@@ -222,6 +239,9 @@ MP_NOINLINE STATIC bool init_flash_fs(uint reset_mode) {
 
     return true;
 }
+
+#endif  // MICROPY_HW_BDEV_HAS_MBR
+
 #endif
 
 #if MICROPY_HW_SDCARD_MOUNT_AT_BOOT
