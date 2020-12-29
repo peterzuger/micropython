@@ -416,6 +416,11 @@ bool uart_init(pyb_uart_obj_t *uart_obj,
 
     for (uint i = 0; i < 4; i++) {
         if (pins[i] != NULL) {
+            if (uart_unit == 1) {
+                // Our BLIF at UART1 is protected by 4k7 on RX and TX
+                // FIXME: Andy we have to reduce the R25 and R2
+                pull = MP_HAL_PIN_PULL_NONE;    // no pull-up on UART1 RX
+            }
             bool ret = mp_hal_pin_config_alt(pins[i], mode, pull, AF_FN_UART, uart_unit);
             if (!ret) {
                 return false;
