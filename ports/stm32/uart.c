@@ -474,10 +474,11 @@ bool uart_init(pyb_uart_obj_t *uart_obj,
     }
 
     uint32_t mode = MP_HAL_PIN_MODE_ALT;
-    uint32_t pull = MP_HAL_PIN_PULL_UP;
 
     for (uint i = 0; i < 4; i++) {
         if (pins[i] != NULL) {
+            // Configure pull-up on RX and CTS (the input pins).
+            uint32_t pull = (i & 1) ? MP_HAL_PIN_PULL_UP : MP_HAL_PIN_PULL_NONE;
             if (uart_unit == 1) {
                 // Our BLIF at UART1 is protected by 4k7 on RX and TX
                 // FIXME: Andy we have to reduce the R25 and R2
