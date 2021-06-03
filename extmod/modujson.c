@@ -36,14 +36,14 @@
 
 STATIC void mod_ujson_separators(mp_obj_t separators, mp_print_ext_t *print_ext) {
     if (separators == mp_const_none) {
-        print_ext->item_separator = ", ";
-        print_ext->key_separator = ": ";
+        print_ext->item_separator = MP_QSTR__comma__space_;
+        print_ext->key_separator = MP_QSTR__colon__space_;
     } else {
         mp_obj_t *items;
         mp_obj_get_array_fixed_n(separators, 2, &items);
 
-        print_ext->item_separator = mp_obj_str_get_str(items[0]);
-        print_ext->key_separator = mp_obj_str_get_str(items[1]);
+        print_ext->item_separator = mp_obj_str_get_qstr(items[0]);
+        print_ext->key_separator = mp_obj_str_get_qstr(items[1]);
     }
 }
 

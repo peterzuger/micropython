@@ -27,6 +27,7 @@
 #define MICROPY_INCLUDED_PY_MPPRINT_H
 
 #include "py/mpconfig.h"
+#include "py/qstr.h"
 
 #define PF_FLAG_LEFT_ADJUST       (0x001)
 #define PF_FLAG_SHOW_SIGN         (0x002)
@@ -54,8 +55,8 @@ typedef struct _mp_print_t {
 
 typedef struct _mp_print_ext_t {
     mp_print_t base;
-    const char *item_separator;
-    const char *key_separator;
+    qstr item_separator;
+    qstr key_separator;
 }mp_print_ext_t;
 
 #define MP_PRINT_GET_EXT(print) ((mp_print_ext_t *)print)

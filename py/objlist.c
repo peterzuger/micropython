@@ -44,7 +44,7 @@ STATIC mp_obj_t list_pop(size_t n_args, const mp_obj_t *args);
 
 STATIC void list_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t kind) {
     mp_obj_list_t *o = MP_OBJ_TO_PTR(o_in);
-    const char *item_separator = ", ";
+    qstr item_separator = MP_QSTR__comma__space_;
     if (!(MICROPY_PY_UJSON && kind == PRINT_JSON)) {
         kind = PRINT_REPR;
     } else {
@@ -53,7 +53,7 @@ STATIC void list_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t k
     mp_print_str(print, "[");
     for (size_t i = 0; i < o->len; i++) {
         if (i > 0) {
-            mp_print_str(print, item_separator);
+            mp_printf(print, "%q", item_separator);
         }
         mp_obj_print_helper(print, o->items[i], kind);
     }
