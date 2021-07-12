@@ -8,11 +8,11 @@ AF_FILE = boards/stm32h743_af.csv
 
 ifeq ($(USE_MBOOT),1)
 # When using Mboot everything goes after the bootloader
-LD_FILES = boards/stm32h743.ld boards/common_bl.ld
+LD_FILES = boards/stm32h743zi.ld boards/common_bl.ld
 TEXT0_ADDR = 0x08020000
 else
 # When not using Mboot everything goes at the start of flash
-LD_FILES = boards/stm32h743.ld boards/common_basic.ld
+LD_FILES = boards/stm32h743zi.ld boards/common_basic.ld
 TEXT0_ADDR = 0x08000000
 endif
 
@@ -21,3 +21,6 @@ MICROPY_PY_LWIP = 1
 MICROPY_PY_USSL = 1
 MICROPY_SSL_MBEDTLS = 1
 MICROPY_VFS_LFS2 = 1
+
+# Flash tool configuration
+OPENOCD_CONFIG = boards/openocd_stm32h7_dual_bank.cfg
