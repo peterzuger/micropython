@@ -39,13 +39,16 @@
 
 void mp_obj_tuple_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t kind) {
     mp_obj_tuple_t *o = MP_OBJ_TO_PTR(o_in);
+    const char *item_separator = ", ";
     if (MICROPY_PY_UJSON && kind == PRINT_JSON) {
         mp_print_str(print, "[");
+        #if MICROPY_PY_UJSON_SEPARATORS
+        item_separator = MP_PRINT_GET_EXT(print)->item_separator;
+        #endif
     } else {
         mp_print_str(print, "(");
         kind = PRINT_REPR;
     }
-    const char *item_separator = (kind == PRINT_JSON) ? ujson_item_separator : ", ";
     for (size_t i = 0; i < o->len; i++) {
         if (i > 0) {
             mp_print_str(print, item_separator);
