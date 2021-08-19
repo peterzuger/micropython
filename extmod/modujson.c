@@ -31,117 +31,83 @@
 #include "py/parsenum.h"
 #include "py/runtime.h"
 #include "py/stream.h"
-#include "py/nlr.h"
 
 #if MICROPY_PY_UJSON
 
-static void mod_ujson_separators(mp_obj_t separators_in, const char **item_separator, const char **key_separator) {
-    if (separators_in == mp_const_none) {
-        *item_separator = ", ";
-        *key_separator = ": ";
-    } else {
-        mp_obj_t *items;
-        size_t len;
-        mp_obj_tuple_get(separators_in, &len, &items);
+#if MICROPY_PY_UJSON_SEPARATORS
 
-        if (len != 2) {
-            mp_raise_ValueError(MP_ERROR_TEXT("too many values to unpack (expected 2)"));
-        }
+enum {
+    DUMP_MODE_TO_STRING = 1,
+    DUMP_MODE_TO_STREAM = 2,
+};
 
-        *item_separator = mp_obj_str_get_str(items[0]);
-        *key_separator = mp_obj_str_get_str(items[1]);
-    }
-}
-
-const char *ujson_item_separator = ", ";
-const char *ujson_key_separator = ": ";
-
-STATIC mp_obj_t mod_ujson_dump(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum {ARG_indent, ARG_separators};
-    const mp_arg_t allowed_args[] = {
-        { MP_QSTR_indent, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = mp_const_none} },
-        { MP_QSTR_separators, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = mp_const_none} },
+STATIC mp_obj_t mod_ujson_dump_helper(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args, unsigned int mode) {
+    enum { ARG_separators };
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_separators, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
     };
 
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
-    mp_arg_parse_all(n_args - 2, pos_args + 2, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+    mp_arg_parse_all(n_args - mode, pos_args + mode, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    if (args[ARG_indent].u_obj != mp_const_none) {
-        mp_raise_NotImplementedError(MP_ERROR_TEXT("indent is not None"));
-    }
+    mp_print_ext_t print_ext;
 
-    mp_get_stream_raise(pos_args[1], MP_STREAM_OP_WRITE);
-
-    const char *old_item_separator = ujson_item_separator;
-    const char *old_key_separator = ujson_key_separator;
-    bool raise = false;
-    mod_ujson_separators(args[ARG_separators].u_obj, &ujson_item_separator, &ujson_key_separator);
-
-    nlr_buf_t nlr;
-    if (nlr_push(&nlr) == 0) {
-        mp_print_t print = {MP_OBJ_TO_PTR(pos_args[1]), mp_stream_write_adaptor};
-        mp_obj_print_helper(&print, pos_args[0], PRINT_JSON);
-        nlr_pop();
+    if (args[ARG_separators].u_obj == mp_const_none) {
+        print_ext.item_separator = ", ";
+        print_ext.key_separator = ": ";
     } else {
-        raise = true;
+        mp_obj_t *items;
+        mp_obj_get_array_fixed_n(args[ARG_separators].u_obj, 2, &items);
+        print_ext.item_separator = mp_obj_str_get_str(items[0]);
+        print_ext.key_separator = mp_obj_str_get_str(items[1]);
     }
 
-    // revert old values in case of nested dump
-    ujson_item_separator = old_item_separator;
-    ujson_key_separator = old_key_separator;
-
-    // Re-raise the exception
-    if (raise) {
-        nlr_raise(MP_OBJ_FROM_PTR(nlr.ret_val));
+    if (mode == DUMP_MODE_TO_STRING) {
+        // dumps(obj)
+        vstr_t vstr;
+        vstr_init_print(&vstr, 8, &print_ext.base);
+        mp_obj_print_helper(&print_ext.base, pos_args[0], PRINT_JSON);
+        return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
+    } else {
+        // dump(obj, stream)
+        print_ext.base.data = MP_OBJ_TO_PTR(pos_args[1]);
+        print_ext.base.print_strn = mp_stream_write_adaptor;
+        mp_get_stream_raise(pos_args[1], MP_STREAM_OP_WRITE);
+        mp_obj_print_helper(&print_ext.base, pos_args[0], PRINT_JSON);
+        return mp_const_none;
     }
+}
 
-    return mp_const_none;
+STATIC mp_obj_t mod_ujson_dump(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    return mod_ujson_dump_helper(n_args, pos_args, kw_args, DUMP_MODE_TO_STREAM);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ujson_dump_obj, 2, mod_ujson_dump);
 
 STATIC mp_obj_t mod_ujson_dumps(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum {ARG_indent, ARG_separators};
-    const mp_arg_t allowed_args[] = {
-        { MP_QSTR_indent, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = mp_const_none} },
-        { MP_QSTR_separators, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = mp_const_none} },
-    };
+    return mod_ujson_dump_helper(n_args, pos_args, kw_args, DUMP_MODE_TO_STRING);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ujson_dumps_obj, 1, mod_ujson_dumps);
 
-    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
-    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+#else
 
-    if (args[ARG_indent].u_obj != mp_const_none) {
-        mp_raise_NotImplementedError(MP_ERROR_TEXT("indent is not None"));
-    }
+STATIC mp_obj_t mod_ujson_dump(mp_obj_t obj, mp_obj_t stream) {
+    mp_get_stream_raise(stream, MP_STREAM_OP_WRITE);
+    mp_print_t print = {MP_OBJ_TO_PTR(stream), mp_stream_write_adaptor};
+    mp_obj_print_helper(&print, obj, PRINT_JSON);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_ujson_dump_obj, mod_ujson_dump);
 
+STATIC mp_obj_t mod_ujson_dumps(mp_obj_t obj) {
     vstr_t vstr;
     mp_print_t print;
     vstr_init_print(&vstr, 8, &print);
-
-    const char *old_item_separator = ujson_item_separator;
-    const char *old_key_separator = ujson_key_separator;
-    bool raise = false;
-    mod_ujson_separators(args[ARG_separators].u_obj, &ujson_item_separator, &ujson_key_separator);
-
-    nlr_buf_t nlr;
-    if (nlr_push(&nlr) == 0) {
-        mp_obj_print_helper(&print, pos_args[0], PRINT_JSON);
-        nlr_pop();
-    } else {
-        raise = true;
-    }
-
-    // revert old values in case of nested dump
-    ujson_item_separator = old_item_separator;
-    ujson_key_separator = old_key_separator;
-
-    // Re-raise the exception
-    if (raise) {
-        nlr_raise(MP_OBJ_FROM_PTR(nlr.ret_val));
-    }
-
+    mp_obj_print_helper(&print, obj, PRINT_JSON);
     return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ujson_dumps_obj, 1, mod_ujson_dumps);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_ujson_dumps_obj, mod_ujson_dumps);
+
+#endif
 
 // The function below implements a simple non-recursive JSON parser.
 //
