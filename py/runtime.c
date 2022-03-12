@@ -122,6 +122,15 @@ void mp_init(void) {
     MP_STATE_VM(vfs_mount_table) = NULL;
     #endif
 
+    #if MICROPY_PY_SYS_PATH_ARGV_DEFAULTS
+    mp_obj_list_init(MP_OBJ_TO_PTR(mp_sys_path), 0);
+    mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR_)); // current dir (or base dir of the script)
+    #if MICROPY_MODULE_FROZEN
+    mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__dot_frozen));
+    #endif
+    mp_obj_list_init(MP_OBJ_TO_PTR(mp_sys_argv), 0);
+    #endif
+
     #if MICROPY_PY_SYS_ATEXIT
     MP_STATE_VM(sys_exitfunc) = mp_const_none;
     #endif
@@ -1399,7 +1408,7 @@ mp_obj_t mp_import_name(qstr name, mp_obj_t fromlist, mp_obj_t level) {
     // build args array
     mp_obj_t args[5];
     args[0] = MP_OBJ_NEW_QSTR(name);
-    args[1] = MP_OBJ_FROM_PTR(mp_globals_get()); // globals of the current context
+    args[1] = mp_const_none; // TODO should be globals
     args[2] = mp_const_none; // TODO should be locals
     args[3] = fromlist;
     args[4] = level;
