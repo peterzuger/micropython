@@ -52,6 +52,13 @@
 #define CYW43_EV_ASSOC_REQ_IE           (87)
 #define CYW43_EV_ASSOC_RESP_IE          (88)
 
+// Access Point auth modes
+#define CYW43_AUTH_OPEN                 (0x00)
+#define CYW43_AUTH_WPA_NONE             (0x01)
+#define CYW43_AUTH_WPA_TKIP             (0x03)
+#define CYW43_AUTH_WPA_PSK              (0x07)
+#define CYW43_AUTH_WPA2_PSK             (0x04)
+
 enum {
     CYW43_ITF_STA,
     CYW43_ITF_AP,

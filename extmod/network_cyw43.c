@@ -419,6 +419,10 @@ STATIC mp_obj_t network_cyw43_config(size_t n_args, const mp_obj_t *args, mp_map
                         cyw43_ioctl(self->cyw, CYW43_IOCTL_SET_VAR, 9 + 4, buf, self->itf);
                         break;
                     }
+                    case MP_QSTR_authmode: {
+                        cyw43_wifi_ap_set_auth(self->cyw, mp_obj_get_int(e->value));
+                        break;
+                    }
                     default:
                         mp_raise_ValueError(MP_ERROR_TEXT("unknown config param"));
                 }
@@ -446,6 +450,12 @@ STATIC const mp_rom_map_elem_t network_cyw43_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_ifconfig), MP_ROM_PTR(&network_cyw43_ifconfig_obj) },
     { MP_ROM_QSTR(MP_QSTR_status), MP_ROM_PTR(&network_cyw43_status_obj) },
     { MP_ROM_QSTR(MP_QSTR_config), MP_ROM_PTR(&network_cyw43_config_obj) },
+
+    { MP_ROM_QSTR(MP_QSTR_AUTH_OPEN),     MP_ROM_INT(CYW43_AUTH_OPEN)     },
+    { MP_ROM_QSTR(MP_QSTR_AUTH_WPA_NONE), MP_ROM_INT(CYW43_AUTH_WPA_NONE) },
+    { MP_ROM_QSTR(MP_QSTR_AUTH_WPA_TKIP), MP_ROM_INT(CYW43_AUTH_WPA_TKIP) },
+    { MP_ROM_QSTR(MP_QSTR_AUTH_WPA_PSK),  MP_ROM_INT(CYW43_AUTH_WPA_PSK)  },
+    { MP_ROM_QSTR(MP_QSTR_AUTH_WPA2_PSK), MP_ROM_INT(CYW43_AUTH_WPA2_PSK) },
 };
 STATIC MP_DEFINE_CONST_DICT(network_cyw43_locals_dict, network_cyw43_locals_dict_table);
 
