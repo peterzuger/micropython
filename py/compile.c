@@ -37,6 +37,7 @@
 #include "py/asmbase.h"
 #include "py/nativeglue.h"
 #include "py/persistentcode.h"
+#include "py/smallint.h"
 
 #if MICROPY_ENABLE_COMPILER
 
@@ -219,7 +220,7 @@ STATIC void mp_emit_common_start_pass(mp_emit_common_t *emit, pass_kind_t pass) 
     } else if (pass > MP_PASS_STACK_SIZE) {
         emit->ct_cur_obj = emit->ct_cur_obj_base;
     }
-    if (pass == MP_PASS_EMIT) {
+    if (pass == MP_PASS_CODE_SIZE) {
         if (emit->ct_cur_child == 0) {
             emit->children = NULL;
         } else {
@@ -2397,24 +2398,36 @@ STATIC void compile_trailer_paren_helper(compiler_t *comp, mp_parse_node_t pn_ar
     int n_positional = n_positional_extra;
     uint n_keyword = 0;
     uint star_flags = 0;
-    mp_parse_node_struct_t *star_args_node = NULL, *dblstar_args_node = NULL;
+    mp_uint_t star_args = 0;
     for (size_t i = 0; i < n_args; i++) {
         if (MP_PARSE_NODE_IS_STRUCT(args[i])) {
             mp_parse_node_struct_t *pns_arg = (mp_parse_node_struct_t *)args[i];
             if (MP_PARSE_NODE_STRUCT_KIND(pns_arg) == PN_arglist_star) {
-                if (star_flags & MP_EMIT_STAR_FLAG_SINGLE) {
-                    compile_syntax_error(comp, (mp_parse_node_t)pns_arg, MP_ERROR_TEXT("can't have multiple *x"));
+                if (star_flags & MP_EMIT_STAR_FLAG_DOUBLE) {
+                    compile_syntax_error(comp, (mp_parse_node_t)pns_arg, MP_ERROR_TEXT("* arg after **"));
+                    return;
+                }
+                #if MICROPY_DYNAMIC_COMPILER
+                if (i >= (size_t)mp_dynamic_compiler.small_int_bits - 1)
+                #else
+                if (i >= MP_SMALL_INT_BITS - 1)
+                #endif
+                {
+                    // If there are not enough bits in a small int to fit the flag, then we consider
+                    // it a syntax error. It should be unlikely to have this many args in practice.
+                    compile_syntax_error(comp, (mp_parse_node_t)pns_arg, MP_ERROR_TEXT("too many args"));
                     return;
                 }
                 star_flags |= MP_EMIT_STAR_FLAG_SINGLE;
-                star_args_node = pns_arg;
+                star_args |= (mp_uint_t)1 << i;
+                compile_node(comp, pns_arg->nodes[0]);
+                n_positional++;
             } else if (MP_PARSE_NODE_STRUCT_KIND(pns_arg) == PN_arglist_dbl_star) {
-                if (star_flags & MP_EMIT_STAR_FLAG_DOUBLE) {
-                    compile_syntax_error(comp, (mp_parse_node_t)pns_arg, MP_ERROR_TEXT("can't have multiple **x"));
-                    return;
-                }
                 star_flags |= MP_EMIT_STAR_FLAG_DOUBLE;
-                dblstar_args_node = pns_arg;
+                // double-star args are stored as kw arg with key of None
+                EMIT(load_null);
+                compile_node(comp, pns_arg->nodes[0]);
+                n_keyword++;
             } else if (MP_PARSE_NODE_STRUCT_KIND(pns_arg) == PN_argument) {
                 #if MICROPY_PY_ASSIGN_EXPR
                 if (MP_PARSE_NODE_IS_STRUCT_KIND(pns_arg->nodes[1], PN_argument_3)) {
@@ -2429,7 +2442,7 @@ STATIC void compile_trailer_paren_helper(compiler_t *comp, mp_parse_node_t pn_ar
                     }
                     EMIT_ARG(load_const_str, MP_PARSE_NODE_LEAF_ARG(pns_arg->nodes[0]));
                     compile_node(comp, pns_arg->nodes[1]);
-                    n_keyword += 1;
+                    n_keyword++;
                 } else {
                     compile_comprehension(comp, pns_arg, SCOPE_GEN_EXPR);
                     n_positional++;
@@ -2439,12 +2452,12 @@ STATIC void compile_trailer_paren_helper(compiler_t *comp, mp_parse_node_t pn_ar
             }
         } else {
         normal_argument:
-            if (star_flags) {
-                compile_syntax_error(comp, args[i], MP_ERROR_TEXT("non-keyword arg after */**"));
+            if (star_flags & MP_EMIT_STAR_FLAG_DOUBLE) {
+                compile_syntax_error(comp, args[i], MP_ERROR_TEXT("positional arg after **"));
                 return;
             }
             if (n_keyword > 0) {
-                compile_syntax_error(comp, args[i], MP_ERROR_TEXT("non-keyword arg after keyword arg"));
+                compile_syntax_error(comp, args[i], MP_ERROR_TEXT("positional arg after keyword arg"));
                 return;
             }
             compile_node(comp, args[i]);
@@ -2452,19 +2465,9 @@ STATIC void compile_trailer_paren_helper(compiler_t *comp, mp_parse_node_t pn_ar
         }
     }
 
-    // compile the star/double-star arguments if we had them
-    // if we had one but not the other then we load "null" as a place holder
     if (star_flags != 0) {
-        if (star_args_node == NULL) {
-            EMIT(load_null);
-        } else {
-            compile_node(comp, star_args_node->nodes[0]);
-        }
-        if (dblstar_args_node == NULL) {
-            EMIT(load_null);
-        } else {
-            compile_node(comp, dblstar_args_node->nodes[0]);
-        }
+        // one extra object that contains the star_args map
+        EMIT_ARG(load_const_small_int, star_args);
     }
 
     // emit the function/method call
@@ -2760,12 +2763,7 @@ STATIC void compile_atom_expr_await(compiler_t *comp, mp_parse_node_struct_t *pn
 #endif
 
 STATIC mp_obj_t get_const_object(mp_parse_node_struct_t *pns) {
-    #if MICROPY_OBJ_REPR == MICROPY_OBJ_REPR_D
-    // nodes are 32-bit pointers, but need to extract 64-bit object
-    return (uint64_t)pns->nodes[0] | ((uint64_t)pns->nodes[1] << 32);
-    #else
-    return (mp_obj_t)pns->nodes[0];
-    #endif
+    return mp_parse_node_extract_const_object(pns);
 }
 
 STATIC void compile_const_object(compiler_t *comp, mp_parse_node_struct_t *pns) {
@@ -2790,23 +2788,7 @@ STATIC void compile_node(compiler_t *comp, mp_parse_node_t pn) {
         // pass
     } else if (MP_PARSE_NODE_IS_SMALL_INT(pn)) {
         mp_int_t arg = MP_PARSE_NODE_LEAF_SMALL_INT(pn);
-        #if MICROPY_DYNAMIC_COMPILER
-        mp_uint_t sign_mask = -((mp_uint_t)1 << (mp_dynamic_compiler.small_int_bits - 1));
-        if ((arg & sign_mask) == 0 || (arg & sign_mask) == sign_mask) {
-            // integer fits in target runtime's small-int
-            EMIT_ARG(load_const_small_int, arg);
-        } else {
-            // integer doesn't fit, so create a multi-precision int object
-            // (but only create the actual object on the last pass)
-            if (comp->pass != MP_PASS_EMIT) {
-                EMIT_ARG(load_const_obj, mp_const_none);
-            } else {
-                EMIT_ARG(load_const_obj, mp_obj_new_int_from_ll(arg));
-            }
-        }
-        #else
         EMIT_ARG(load_const_small_int, arg);
-        #endif
     } else if (MP_PARSE_NODE_IS_LEAF(pn)) {
         uintptr_t arg = MP_PARSE_NODE_LEAF_ARG(pn);
         switch (MP_PARSE_NODE_LEAF_KIND(pn)) {
@@ -2815,16 +2797,6 @@ STATIC void compile_node(compiler_t *comp, mp_parse_node_t pn) {
                 break;
             case MP_PARSE_NODE_STRING:
                 EMIT_ARG(load_const_str, arg);
-                break;
-            case MP_PARSE_NODE_BYTES:
-                // only create and load the actual bytes object on the last pass
-                if (comp->pass != MP_PASS_EMIT) {
-                    EMIT_ARG(load_const_obj, mp_const_none);
-                } else {
-                    size_t len;
-                    const byte *data = qstr_data(arg, &len);
-                    EMIT_ARG(load_const_obj, mp_obj_new_bytes(data, len));
-                }
                 break;
             case MP_PARSE_NODE_TOKEN:
             default:
@@ -3046,7 +3018,7 @@ STATIC void check_for_doc_string(compiler_t *comp, mp_parse_node_t pn) {
     #endif
 }
 
-STATIC void compile_scope(compiler_t *comp, scope_t *scope, pass_kind_t pass) {
+STATIC bool compile_scope(compiler_t *comp, scope_t *scope, pass_kind_t pass) {
     comp->pass = pass;
     comp->scope_cur = scope;
     comp->next_label = 0;
@@ -3213,10 +3185,12 @@ STATIC void compile_scope(compiler_t *comp, scope_t *scope, pass_kind_t pass) {
         EMIT(return_value);
     }
 
-    EMIT(end_pass);
+    bool pass_complete = EMIT(end_pass);
 
     // make sure we match all the exception levels
     assert(comp->cur_except_level == 0);
+
+    return pass_complete;
 }
 
 #if MICROPY_EMIT_INLINE_ASM
@@ -3626,8 +3600,10 @@ mp_compiled_module_t mp_compile_to_raw_code(mp_parse_tree_t *parse_tree, qstr so
             }
 
             // final pass: emit code
+            // the emitter can request multiple of these passes
             if (comp->compile_error == MP_OBJ_NULL) {
-                compile_scope(comp, s, MP_PASS_EMIT);
+                while (!compile_scope(comp, s, MP_PASS_EMIT)) {
+                }
             }
         }
     }
@@ -3658,7 +3634,9 @@ mp_compiled_module_t mp_compile_to_raw_code(mp_parse_tree_t *parse_tree, qstr so
         if (mp_verbose_flag >= 2) {
             for (scope_t *s = comp->scope_head; s != NULL; s = s->next) {
                 mp_raw_code_t *rc = s->raw_code;
-                mp_bytecode_print(&mp_plat_print, rc, rc->fun_data, rc->fun_data_len, &cm.context->constants);
+                if (rc->kind == MP_CODE_BYTECODE) {
+                    mp_bytecode_print(&mp_plat_print, rc, &cm.context->constants);
+                }
             }
         }
         #endif

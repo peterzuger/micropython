@@ -48,21 +48,6 @@
 #define MPY_FEATURE_ARCH_DYNAMIC MPY_FEATURE_ARCH
 #endif
 
-#if MICROPY_PERSISTENT_CODE_LOAD || (MICROPY_PERSISTENT_CODE_SAVE && !MICROPY_DYNAMIC_COMPILER)
-// The bytecode will depend on the number of bits in a small-int, and
-// this function computes that (could make it a fixed constant, but it
-// would need to be defined in mpconfigport.h).
-STATIC int mp_small_int_bits(void) {
-    mp_int_t i = MP_SMALL_INT_MAX;
-    int n = 1;
-    while (i != 0) {
-        i >>= 1;
-        ++n;
-    }
-    return n;
-}
-#endif
-
 typedef struct _bytecode_prelude_t {
     uint n_state;
     uint n_exc_stack;
@@ -213,29 +198,41 @@ STATIC qstr load_qstr(mp_reader_t *reader) {
 STATIC mp_obj_t load_obj(mp_reader_t *reader) {
     byte obj_type = read_byte(reader);
     #if MICROPY_EMIT_MACHINE_CODE
-    if (obj_type == 't') {
+    if (obj_type == MP_PERSISTENT_OBJ_FUN_TABLE) {
         return MP_OBJ_FROM_PTR(&mp_fun_table);
     } else
     #endif
-    if (obj_type == 'e') {
+    if (obj_type == MP_PERSISTENT_OBJ_NONE) {
+        return mp_const_none;
+    } else if (obj_type == MP_PERSISTENT_OBJ_FALSE) {
+        return mp_const_false;
+    } else if (obj_type == MP_PERSISTENT_OBJ_TRUE) {
+        return mp_const_true;
+    } else if (obj_type == MP_PERSISTENT_OBJ_ELLIPSIS) {
         return MP_OBJ_FROM_PTR(&mp_const_ellipsis_obj);
     } else {
         size_t len = read_uint(reader);
-        if (len == 0 && obj_type == 'b') {
+        if (len == 0 && obj_type == MP_PERSISTENT_OBJ_BYTES) {
             read_byte(reader); // skip null terminator
             return mp_const_empty_bytes;
+        } else if (obj_type == MP_PERSISTENT_OBJ_TUPLE) {
+            mp_obj_tuple_t *tuple = MP_OBJ_TO_PTR(mp_obj_new_tuple(len, NULL));
+            for (size_t i = 0; i < len; ++i) {
+                tuple->items[i] = load_obj(reader);
+            }
+            return MP_OBJ_FROM_PTR(tuple);
         }
         vstr_t vstr;
         vstr_init_len(&vstr, len);
         read_bytes(reader, (byte *)vstr.buf, len);
-        if (obj_type == 's' || obj_type == 'b') {
+        if (obj_type == MP_PERSISTENT_OBJ_STR || obj_type == MP_PERSISTENT_OBJ_BYTES) {
             read_byte(reader); // skip null terminator
-            return mp_obj_new_str_from_vstr(obj_type == 's' ? &mp_type_str : &mp_type_bytes, &vstr);
-        } else if (obj_type == 'i') {
+            return mp_obj_new_str_from_vstr(obj_type == MP_PERSISTENT_OBJ_STR ? &mp_type_str : &mp_type_bytes, &vstr);
+        } else if (obj_type == MP_PERSISTENT_OBJ_INT) {
             return mp_parse_num_integer(vstr.buf, vstr.len, 10, NULL);
         } else {
-            assert(obj_type == 'f' || obj_type == 'c');
-            return mp_parse_num_decimal(vstr.buf, vstr.len, obj_type == 'c', false, NULL);
+            assert(obj_type == MP_PERSISTENT_OBJ_FLOAT || obj_type == MP_PERSISTENT_OBJ_COMPLEX);
+            return mp_parse_num_decimal(vstr.buf, vstr.len, obj_type == MP_PERSISTENT_OBJ_COMPLEX, false, NULL);
         }
     }
 }
@@ -420,7 +417,7 @@ mp_compiled_module_t mp_raw_code_load(mp_reader_t *reader, mp_module_context_t *
     if (header[0] != 'M'
         || header[1] != MPY_VERSION
         || MPY_FEATURE_DECODE_FLAGS(header[2]) != MPY_FEATURE_FLAGS
-        || header[3] > mp_small_int_bits()) {
+        || header[3] > MP_SMALL_INT_BITS) {
         mp_raise_ValueError(MP_ERROR_TEXT("incompatible .mpy file"));
     }
     if (MPY_FEATURE_DECODE_ARCH(header[2]) != MP_NATIVE_ARCH_NONE) {
@@ -513,38 +510,57 @@ STATIC void save_qstr(mp_print_t *print, qstr qst) {
 STATIC void save_obj(mp_print_t *print, mp_obj_t o) {
     #if MICROPY_EMIT_MACHINE_CODE
     if (o == MP_OBJ_FROM_PTR(&mp_fun_table)) {
-        byte obj_type = 't';
+        byte obj_type = MP_PERSISTENT_OBJ_FUN_TABLE;
         mp_print_bytes(print, &obj_type, 1);
     } else
     #endif
     if (mp_obj_is_str_or_bytes(o)) {
         byte obj_type;
         if (mp_obj_is_str(o)) {
-            obj_type = 's';
+            obj_type = MP_PERSISTENT_OBJ_STR;
         } else {
-            obj_type = 'b';
+            obj_type = MP_PERSISTENT_OBJ_BYTES;
         }
         size_t len;
         const char *str = mp_obj_str_get_data(o, &len);
         mp_print_bytes(print, &obj_type, 1);
         mp_print_uint(print, len);
         mp_print_bytes(print, (const byte *)str, len + 1); // +1 to store null terminator
-    } else if (MP_OBJ_TO_PTR(o) == &mp_const_ellipsis_obj) {
-        byte obj_type = 'e';
+    } else if (o == mp_const_none) {
+        byte obj_type = MP_PERSISTENT_OBJ_NONE;
         mp_print_bytes(print, &obj_type, 1);
+    } else if (o == mp_const_false) {
+        byte obj_type = MP_PERSISTENT_OBJ_FALSE;
+        mp_print_bytes(print, &obj_type, 1);
+    } else if (o == mp_const_true) {
+        byte obj_type = MP_PERSISTENT_OBJ_TRUE;
+        mp_print_bytes(print, &obj_type, 1);
+    } else if (MP_OBJ_TO_PTR(o) == &mp_const_ellipsis_obj) {
+        byte obj_type = MP_PERSISTENT_OBJ_ELLIPSIS;
+        mp_print_bytes(print, &obj_type, 1);
+    } else if (mp_obj_is_type(o, &mp_type_tuple)) {
+        size_t len;
+        mp_obj_t *items;
+        mp_obj_tuple_get(o, &len, &items);
+        byte obj_type = MP_PERSISTENT_OBJ_TUPLE;
+        mp_print_bytes(print, &obj_type, 1);
+        mp_print_uint(print, len);
+        for (size_t i = 0; i < len; ++i) {
+            save_obj(print, items[i]);
+        }
     } else {
         // we save numbers using a simplistic text representation
         // TODO could be improved
         byte obj_type;
-        if (mp_obj_is_type(o, &mp_type_int)) {
-            obj_type = 'i';
+        if (mp_obj_is_int(o)) {
+            obj_type = MP_PERSISTENT_OBJ_INT;
         #if MICROPY_PY_BUILTINS_COMPLEX
         } else if (mp_obj_is_type(o, &mp_type_complex)) {
-            obj_type = 'c';
+            obj_type = MP_PERSISTENT_OBJ_COMPLEX;
         #endif
         } else {
             assert(mp_obj_is_float(o));
-            obj_type = 'f';
+            obj_type = MP_PERSISTENT_OBJ_FLOAT;
         }
         vstr_t vstr;
         mp_print_t pr;
@@ -609,7 +625,7 @@ void mp_raw_code_save(mp_compiled_module_t *cm, mp_print_t *print) {
         #if MICROPY_DYNAMIC_COMPILER
         mp_dynamic_compiler.small_int_bits,
         #else
-        mp_small_int_bits(),
+        MP_SMALL_INT_BITS,
         #endif
     };
     if (cm->has_native) {
