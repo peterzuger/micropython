@@ -131,7 +131,9 @@ function ci_esp32_build {
     source esp-idf/export.sh
     make ${MAKEOPTS} -C mpy-cross
     make ${MAKEOPTS} -C ports/esp32 submodules
-    make ${MAKEOPTS} -C ports/esp32 USER_C_MODULES=../../../examples/usercmodule/micropython.cmake FROZEN_MANIFEST=$(pwd)/ports/esp32/boards/manifest.py
+    make ${MAKEOPTS} -C ports/esp32 \
+        USER_C_MODULES=../../../examples/usercmodule/micropython.cmake \
+        FROZEN_MANIFEST=$(pwd)/ports/esp32/boards/manifest_test.py
     if [ -d $IDF_PATH/components/esp32c3 ]; then
         make ${MAKEOPTS} -C ports/esp32 BOARD=GENERIC_C3
     fi
@@ -256,7 +258,7 @@ function ci_rp2_setup {
 
 function ci_rp2_build {
     make ${MAKEOPTS} -C mpy-cross
-    git submodule update --init lib/pico-sdk lib/tinyusb
+    make ${MAKEOPTS} -C ports/rp2 submodules
     make ${MAKEOPTS} -C ports/rp2
     make ${MAKEOPTS} -C ports/rp2 clean
     make ${MAKEOPTS} -C ports/rp2 USER_C_MODULES=../../examples/usercmodule/micropython.cmake
@@ -292,6 +294,7 @@ function ci_stm32_pyb_build {
     make ${MAKEOPTS} -C ports/stm32 BOARD=PYBD_SF6 NANBOX=1 MICROPY_BLUETOOTH_NIMBLE=0 MICROPY_BLUETOOTH_BTSTACK=1
     make ${MAKEOPTS} -C ports/stm32/mboot BOARD=PYBV10 CFLAGS_EXTRA='-DMBOOT_FSLOAD=1 -DMBOOT_VFS_LFS2=1'
     make ${MAKEOPTS} -C ports/stm32/mboot BOARD=PYBD_SF6
+    make ${MAKEOPTS} -C ports/stm32/mboot BOARD=STM32F769DISC CFLAGS_EXTRA='-DMBOOT_ADDRESS_SPACE_64BIT=1 -DMBOOT_SDCARD_ADDR=0x100000000ULL -DMBOOT_SDCARD_BYTE_SIZE=0x400000000ULL -DMBOOT_FSLOAD=1 -DMBOOT_VFS_FAT=1'
 }
 
 function ci_stm32_nucleo_build {
