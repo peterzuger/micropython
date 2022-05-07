@@ -621,6 +621,11 @@
 #define MICROPY_GC_HOOK_LOOP
 #endif
 
+// Whether to provide m_tracked_calloc, m_tracked_free functions
+#ifndef MICROPY_TRACKED_ALLOC
+#define MICROPY_TRACKED_ALLOC (0)
+#endif
+
 // Whether to enable finalisers in the garbage collector (ie call __del__)
 #ifndef MICROPY_ENABLE_FINALISER
 #define MICROPY_ENABLE_FINALISER (MICROPY_CONFIG_ROM_LEVEL_AT_LEAST_EXTRA_FEATURES)
@@ -1712,6 +1717,20 @@ typedef double mp_float_t;
 // like __attribute__((aligned(4))).
 #ifndef MICROPY_OBJ_BASE_ALIGNMENT
 #define MICROPY_OBJ_BASE_ALIGNMENT
+#endif
+
+// String used for the banner, and sys.version additional information
+#ifndef MICROPY_BANNER_NAME_AND_VERSION
+#define MICROPY_BANNER_NAME_AND_VERSION "MicroPython " MICROPY_GIT_TAG " on " MICROPY_BUILD_DATE
+#endif
+
+// String used for the second part of the banner, and sys.implementation._machine
+#ifndef MICROPY_BANNER_MACHINE
+#ifdef MICROPY_HW_BOARD_NAME
+#define MICROPY_BANNER_MACHINE MICROPY_HW_BOARD_NAME " with " MICROPY_HW_MCU_NAME
+#else
+#define MICROPY_BANNER_MACHINE MICROPY_PY_SYS_PLATFORM " [" MICROPY_PLATFORM_COMPILER "] version"
+#endif
 #endif
 
 // On embedded platforms, these will typically enable/disable irqs.
