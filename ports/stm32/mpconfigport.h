@@ -103,7 +103,9 @@
 #define MICROPY_PY_UOS_SEP          (1)
 #define MICROPY_PY_UOS_SYNC         (1)
 #define MICROPY_PY_UOS_UNAME        (1)
+#ifndef MICROPY_PY_UOS_URANDOM
 #define MICROPY_PY_UOS_URANDOM      (MICROPY_HW_ENABLE_RNG)
+#endif
 #define MICROPY_PY_URANDOM_SEED_INIT_FUNC (rng_get())
 #ifndef MICROPY_PY_UTIME
 #define MICROPY_PY_UTIME            (1)
