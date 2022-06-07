@@ -98,7 +98,7 @@ void cyw43_init(cyw43_t *self) {
     self->pend_disassoc = false;
     self->pend_rejoin= false;
     self->pend_rejoin_wpa = false;
-    self->ap_channel = 3;
+    self->ap_channel = 1;
     self->ap_ssid_len = 0;
     self->ap_key_len = 0;
     self->hostname[0] = '\0';

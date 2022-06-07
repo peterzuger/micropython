@@ -102,8 +102,8 @@ void cyw43_tcpip_init(cyw43_t *self, int itf) {
         IP4_ADDR(&IP(ipconfig[0]), 0, 0, 0, 0);
         IP4_ADDR(&IP(ipconfig[2]), 192, 168, 0, 1);
     } else {
-        IP4_ADDR(&IP(ipconfig[0]), 192, 168, 4, 1);
-        IP4_ADDR(&IP(ipconfig[2]), 192, 168, 4, 1);
+        IP4_ADDR(&IP(ipconfig[0]), 192, 168, 0, 1);
+        IP4_ADDR(&IP(ipconfig[2]), 192, 168, 0, 1);
     }
     IP4_ADDR(&IP(ipconfig[1]), 255, 255, 255, 0);
     IP4_ADDR(&IP(ipconfig[3]), 8, 8, 8, 8);
