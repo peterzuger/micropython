@@ -76,6 +76,7 @@ typedef struct _cyw43_t {
     struct netif netif[2];
     struct dhcp dhcp_client;
     dhcp_server_t dhcp_server;
+    char hostname[32];
 } cyw43_t;
 
 extern cyw43_t cyw43_state;

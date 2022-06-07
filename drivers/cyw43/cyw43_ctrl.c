@@ -101,6 +101,7 @@ void cyw43_init(cyw43_t *self) {
     self->ap_channel = 3;
     self->ap_ssid_len = 0;
     self->ap_key_len = 0;
+    self->hostname[0] = '\0';
 
     cyw43_poll = NULL;
 }
