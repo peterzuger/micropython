@@ -201,7 +201,7 @@ extern const struct _mp_obj_type_t mp_network_cyw43_type;
 #define MICROPY_HW_NIC_CYW43
 #endif
 
-#if MICROPY_PY_WIZNET5K
+#if MICROPY_PY_NETWORK_WIZNET5K
 #if MICROPY_PY_LWIP
 extern const struct _mp_obj_type_t mod_network_nic_type_wiznet5k;
 #else
@@ -382,6 +382,12 @@ static inline mp_uint_t disable_irq(void) {
 // scheduler execution.
 #define MICROPY_PY_BLUETOOTH_ENTER MICROPY_PY_PENDSV_ENTER
 #define MICROPY_PY_BLUETOOTH_EXIT  MICROPY_PY_PENDSV_EXIT
+#endif
+
+#if defined(STM32WB)
+#define MICROPY_PY_BLUETOOTH_HCI_READ_MODE MICROPY_PY_BLUETOOTH_HCI_READ_MODE_PACKET
+#else
+#define MICROPY_PY_BLUETOOTH_HCI_READ_MODE MICROPY_PY_BLUETOOTH_HCI_READ_MODE_BYTE
 #endif
 
 // We need an implementation of the log2 function which is not a macro
