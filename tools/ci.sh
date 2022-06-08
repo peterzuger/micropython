@@ -276,6 +276,8 @@ function ci_rp2_build {
     make ${MAKEOPTS} -C ports/rp2
     make ${MAKEOPTS} -C ports/rp2 clean
     make ${MAKEOPTS} -C ports/rp2 USER_C_MODULES=../../examples/usercmodule/micropython.cmake
+    make ${MAKEOPTS} -C ports/rp2 BOARD=W5100S_EVB_PICO submodules
+    make ${MAKEOPTS} -C ports/rp2 BOARD=W5100S_EVB_PICO
 }
 
 ########################################################################################
@@ -303,7 +305,7 @@ function ci_stm32_pyb_build {
     make ${MAKEOPTS} -C ports/stm32 submodules
     git submodule update --init lib/btstack
     git submodule update --init lib/mynewt-nimble
-    make ${MAKEOPTS} -C ports/stm32 BOARD=PYBV11 MICROPY_PY_WIZNET5K=5200 MICROPY_PY_CC3K=1 USER_C_MODULES=../../examples/usercmodule
+    make ${MAKEOPTS} -C ports/stm32 BOARD=PYBV11 MICROPY_PY_NETWORK_WIZNET5K=5200 MICROPY_PY_CC3K=1 USER_C_MODULES=../../examples/usercmodule
     make ${MAKEOPTS} -C ports/stm32 BOARD=PYBD_SF2
     make ${MAKEOPTS} -C ports/stm32 BOARD=PYBD_SF6 NANBOX=1 MICROPY_BLUETOOTH_NIMBLE=0 MICROPY_BLUETOOTH_BTSTACK=1
     make ${MAKEOPTS} -C ports/stm32/mboot BOARD=PYBV10 CFLAGS_EXTRA='-DMBOOT_FSLOAD=1 -DMBOOT_VFS_LFS2=1'
@@ -318,7 +320,7 @@ function ci_stm32_nucleo_build {
 
     # Test building various MCU families, some with additional options.
     make ${MAKEOPTS} -C ports/stm32 BOARD=NUCLEO_F091RC
-    make ${MAKEOPTS} -C ports/stm32 BOARD=NUCLEO_H743ZI CFLAGS_EXTRA='-DMICROPY_PY_THREAD=1'
+    make ${MAKEOPTS} -C ports/stm32 BOARD=NUCLEO_H743ZI COPT=-O2 CFLAGS_EXTRA='-DMICROPY_PY_THREAD=1'
     make ${MAKEOPTS} -C ports/stm32 BOARD=NUCLEO_L073RZ
     make ${MAKEOPTS} -C ports/stm32 BOARD=NUCLEO_L476RG DEBUG=1
 
@@ -464,6 +466,30 @@ function ci_unix_coverage_build {
 
 function ci_unix_coverage_run_tests {
     ci_unix_run_tests_full_helper coverage
+}
+
+function ci_unix_coverage_run_mpy_merge_tests {
+    mptop=$(pwd)
+    outdir=$(mktemp -d)
+    allmpy=()
+
+    # Compile a selection of tests to .mpy and execute them, collecting the output.
+    # None of the tests should SKIP.
+    for inpy in $mptop/tests/basics/[acdel]*.py; do
+        test=$(basename $inpy .py)
+        echo $test
+        outmpy=$outdir/$test.mpy
+        $mptop/mpy-cross/mpy-cross -o $outmpy $inpy
+        (cd $outdir && $mptop/ports/unix/micropython-coverage -m $test >> out-individual)
+        allmpy+=($outmpy)
+    done
+
+    # Merge all the tests into one .mpy file, and then execute it.
+    python3 $mptop/tools/mpy-tool.py --merge -o $outdir/merged.mpy ${allmpy[@]}
+    (cd $outdir && $mptop/ports/unix/micropython-coverage -m merged > out-merged)
+
+    # Make sure the outputs match.
+    diff $outdir/out-individual $outdir/out-merged && /bin/rm -rf $outdir
 }
 
 function ci_unix_coverage_run_native_mpy_tests {
