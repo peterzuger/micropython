@@ -246,7 +246,7 @@ def verify_pack_dfu(keys, filename):
             if header[1] == MBOOT_PACK_CHUNK_FW_GZIP:
                 chunk = zlib.decompress(chunk, wbits=-15)
             full_sig.update(chunk)
-            assert addr == base_addr + len(binary_data)
+            # assert addr == base_addr + len(binary_data)
             binary_data += chunk
 
     full_sig_pass = full_sig.final_verify(actual_sig, keys.sign_pk)
