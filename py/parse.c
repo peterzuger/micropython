@@ -591,7 +591,7 @@ STATIC void push_result_token(parser_t *parser, uint8_t rule_id) {
         mp_obj_t o = mp_parse_num_integer(lex->vstr.buf, lex->vstr.len, 0, lex);
         pn = make_node_const_object_optimised(parser, lex->tok_line, o);
     } else if (lex->tok_kind == MP_TOKEN_FLOAT_OR_IMAG) {
-        mp_obj_t o = mp_parse_num_decimal(lex->vstr.buf, lex->vstr.len, true, false, lex);
+        mp_obj_t o = mp_parse_num_float(lex->vstr.buf, lex->vstr.len, true, lex);
         pn = make_node_const_object(parser, lex->tok_line, o);
     } else if (lex->tok_kind == MP_TOKEN_STRING) {
         // Don't automatically intern all strings.  Doc strings (which are usually large)
@@ -639,6 +639,11 @@ STATIC MP_DEFINE_CONST_MAP(mp_constants_map, mp_constants_table);
 STATIC void push_result_rule(parser_t *parser, size_t src_line, uint8_t rule_id, size_t num_args);
 
 #if MICROPY_COMP_CONST_FOLDING
+#if MICROPY_COMP_CONST_FOLDING_COMPILER_WORKAROUND
+// Some versions of the xtensa-esp32-elf-gcc compiler generate wrong code if this
+// function is static, so provide a hook for them to work around this problem.
+MP_NOINLINE
+#endif
 STATIC bool fold_logical_constants(parser_t *parser, uint8_t rule_id, size_t *num_args) {
     if (rule_id == RULE_or_test
         || rule_id == RULE_and_test) {

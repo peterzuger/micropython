@@ -18,7 +18,6 @@ function ci_gcc_arm_setup {
 # code formatting
 
 function ci_code_formatting_setup {
-    sudo apt-add-repository --yes --update ppa:pybricks/ppa
     sudo apt-get install uncrustify
     pip3 install black
     uncrustify --version
@@ -100,6 +99,7 @@ function ci_cc3200_build {
 # ports/esp32
 
 function ci_esp32_setup_helper {
+    pip3 install pyelftools
     git clone https://github.com/espressif/esp-idf.git
     git -C esp-idf checkout $1
     git -C esp-idf submodule update --init \
@@ -143,6 +143,9 @@ function ci_esp32_build {
     if [ -d $IDF_PATH/components/esp32s3 ]; then
         make ${MAKEOPTS} -C ports/esp32 BOARD=GENERIC_S3
     fi
+
+    # Test building native .mpy with xtensawin architecture.
+    ci_native_mpy_modules_build xtensawin
 }
 
 ########################################################################################
@@ -297,6 +300,7 @@ function ci_samd_build {
 
 function ci_stm32_setup {
     ci_gcc_arm_setup
+    pip3 install pyelftools
     pip3 install pyhy
 }
 
@@ -311,6 +315,10 @@ function ci_stm32_pyb_build {
     make ${MAKEOPTS} -C ports/stm32/mboot BOARD=PYBV10 CFLAGS_EXTRA='-DMBOOT_FSLOAD=1 -DMBOOT_VFS_LFS2=1'
     make ${MAKEOPTS} -C ports/stm32/mboot BOARD=PYBD_SF6
     make ${MAKEOPTS} -C ports/stm32/mboot BOARD=STM32F769DISC CFLAGS_EXTRA='-DMBOOT_ADDRESS_SPACE_64BIT=1 -DMBOOT_SDCARD_ADDR=0x100000000ULL -DMBOOT_SDCARD_BYTE_SIZE=0x400000000ULL -DMBOOT_FSLOAD=1 -DMBOOT_VFS_FAT=1'
+
+    # Test building native .mpy with armv7emsp architecture.
+    git submodule update --init lib/berkeley-db-1.xx
+    ci_native_mpy_modules_build armv7emsp
 }
 
 function ci_stm32_nucleo_build {
@@ -415,6 +423,7 @@ function ci_native_mpy_modules_build {
     fi
     make -C examples/natmod/features1 ARCH=$arch
     make -C examples/natmod/features2 ARCH=$arch
+    make -C examples/natmod/features3 ARCH=$arch
     make -C examples/natmod/btree ARCH=$arch
     make -C examples/natmod/framebuf ARCH=$arch
     make -C examples/natmod/uheapq ARCH=$arch
@@ -660,7 +669,7 @@ function ci_windows_build {
 
 ZEPHYR_DOCKER_VERSION=v0.21.0
 ZEPHYR_SDK_VERSION=0.13.2
-ZEPHYR_VERSION=v3.0.0
+ZEPHYR_VERSION=v3.1.0
 
 function ci_zephyr_setup {
     docker pull zephyrprojectrtos/ci:${ZEPHYR_DOCKER_VERSION}
