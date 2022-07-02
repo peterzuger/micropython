@@ -157,6 +157,10 @@
 #define MICROPY_MODULE_WEAK_LINKS   (1)
 #define MICROPY_CAN_OVERRIDE_BUILTINS (1)
 #define MICROPY_USE_INTERNAL_ERRNO  (1)
+#if MICROPY_HW_USB_CDC_1200BPS_TOUCH
+#define MICROPY_ENABLE_SCHEDULER    (1)
+#define MICROPY_SCHEDULER_STATIC_NODES (1)
+#endif
 #define MICROPY_PY_FUNCTION_ATTRS   (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE (1)
 #define MICROPY_PY_BUILTINS_MEMORYVIEW (1)
@@ -365,4 +369,16 @@ extern const struct _mp_obj_module_t music_module;
 
 #ifndef MP_NEED_LOG2
 #define MP_NEED_LOG2                (1)
+#endif
+
+#ifndef MICROPY_BOARD_STARTUP
+#define MICROPY_BOARD_STARTUP()
+#endif
+
+#ifndef MICROPY_BOARD_ENTER_BOOTLOADER
+#define MICROPY_BOARD_ENTER_BOOTLOADER(nargs, args)
+#endif
+
+#ifndef MICROPY_BOARD_EARLY_INIT
+#define MICROPY_BOARD_EARLY_INIT()
 #endif

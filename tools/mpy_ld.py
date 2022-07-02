@@ -75,6 +75,7 @@ R_ARM_THM_JUMP24 = 30
 R_X86_64_GOTPCREL = 9
 R_X86_64_REX_GOTPCRELX = 42
 R_386_GOT32X = 43
+R_XTENSA_PDIFF32 = 59
 
 ################################################################################
 # Architecture configuration
@@ -433,6 +434,8 @@ def populate_got(env):
             dest = got_entry.name
         elif got_entry.name.startswith("mp_fun_table+0x"):
             dest = int(got_entry.name.split("+")[1], 16) // env.arch.word_size
+        elif got_entry.sec_name == ".external.mp_fun_table":
+            dest = got_entry.sym.mp_fun_table_offset
         elif got_entry.sec_name.startswith(".text"):
             dest = ".text"
         elif got_entry.sec_name.startswith(".rodata"):
@@ -572,9 +575,9 @@ def do_relocation_text(env, text_addr, r):
         reloc = addr - r_offset
         reloc_type = "xtensa_l32r"
 
-    elif env.arch.name == "EM_XTENSA" and r_info_type == R_XTENSA_DIFF32:
+    elif env.arch.name == "EM_XTENSA" and r_info_type in (R_XTENSA_DIFF32, R_XTENSA_PDIFF32):
         if s.section.name.startswith(".text"):
-            # it looks like R_XTENSA_DIFF32 into .text is already correctly relocated
+            # it looks like R_XTENSA_[P]DIFF32 into .text is already correctly relocated
             return
         assert 0
 
