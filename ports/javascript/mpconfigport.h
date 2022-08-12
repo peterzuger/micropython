@@ -89,6 +89,7 @@
 #define MICROPY_PY_UTIME_MP_HAL     (1)
 #define MICROPY_REPL_AUTO_INDENT    (1)
 #define MICROPY_PY_FUNCTION_ATTRS   (1)
+#define MICROPY_PY_BUILTINS_BYTES_HEX (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE (1)
 #define MICROPY_PY_BUILTINS_STR_CENTER (1)
 #define MICROPY_PY_BUILTINS_STR_PARTITION (1)
@@ -182,6 +183,3 @@ typedef long mp_off_t;
 #define MICROPY_HW_MCU_NAME "Emscripten"
 
 #define MP_STATE_PORT MP_STATE_VM
-
-#define MICROPY_PORT_ROOT_POINTERS \
-    const char *readline_hist[8];

@@ -157,9 +157,8 @@ void mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
 void mp_hal_delay_ms(mp_uint_t ms) {
     absolute_time_t t = make_timeout_time_ms(ms);
     while (!time_reached(t)) {
-        mp_handle_pending(true);
+        MICROPY_EVENT_POLL_HOOK_FAST;
         best_effort_wfe_or_timeout(t);
-        MICROPY_HW_USBDEV_TASK_HOOK
     }
 }
 
@@ -204,4 +203,9 @@ void mp_hal_get_mac_ascii(int idx, size_t chr_off, size_t chr_len, char *dest) {
     for (; chr_len; ++chr_off, --chr_len) {
         *dest++ = hexchr[mac[chr_off >> 1] >> (4 * (1 - (chr_off & 1))) & 0xf];
     }
+}
+
+// Shouldn't be used, needed by cyw43-driver in debug build.
+uint32_t storage_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blocks) {
+    panic_unsupported();
 }

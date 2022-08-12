@@ -30,7 +30,7 @@ SRC_C = \
 	mphalport.c \
 	modutime.c \
 
-SRC_QSTR += $(SRC_C)
+SRC_QSTR += $(SRC_C) $(SRC_SHARED)
 
 OBJ += $(PY_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_SHARED:.c=.o))
@@ -52,8 +52,5 @@ min: $(BUILD)/micropython.js
 test: $(BUILD)/micropython.js $(TOP)/tests/run-tests.py
 	$(eval DIRNAME=ports/$(notdir $(CURDIR)))
 	cd $(TOP)/tests && MICROPY_MICROPYTHON=../ports/javascript/node_run.sh ./run-tests.py -j1
-
-# Disable errors for array-bounds warnings on "sp[-MP_OBJ_ITER_BUF_NSLOTS + 2]" access.
-$(BUILD)/py/vm.o: CFLAGS += -Wno-error=array-bounds
 
 include $(TOP)/py/mkrules.mk
