@@ -11,6 +11,7 @@
 #include <string.h>
 #include "py/runtime.h"
 #include "py/mphal.h"
+#include "boardctrl.h"
 #include "pin.h"
 #include "pin_static_af.h"
 #include "mpu.h"
@@ -50,7 +51,6 @@
 #ifdef FMC_SDRAM_BANK
 
 static void sdram_init_seq(SDRAM_HandleTypeDef *hsdram, FMC_SDRAM_CommandTypeDef *command);
-extern void __fatal_error(const char *msg);
 
 bool sdram_init(void) {
     SDRAM_HandleTypeDef hsdram;
@@ -325,7 +325,7 @@ bool __attribute__((optimize("Os"))) sdram_test(bool exhaustive) {
             snprintf(error_buffer, sizeof(error_buffer),
                 "Data bus test failed at 0x%p expected 0x%x found 0x%lx",
                 &mem_base[0], (1 << i), ((volatile uint32_t *)mem_base)[0]);
-            __fatal_error(error_buffer);
+            MICROPY_BOARD_FATAL_ERROR(error_buffer);
             #endif
             return false;
         }
@@ -340,7 +340,7 @@ bool __attribute__((optimize("Os"))) sdram_test(bool exhaustive) {
             snprintf(error_buffer, sizeof(error_buffer),
                 "Address bus test failed at 0x%p expected 0x%x found 0x%x",
                 &mem_base[i], pattern, mem_base[i]);
-            __fatal_error(error_buffer);
+            MICROPY_BOARD_FATAL_ERROR(error_buffer);
             #endif
             return false;
         }
@@ -355,7 +355,7 @@ bool __attribute__((optimize("Os"))) sdram_test(bool exhaustive) {
             snprintf(error_buffer, sizeof(error_buffer),
                 "Address bus overlap at 0x%p expected 0x%x found 0x%x",
                 &mem_base[i], pattern, mem_base[i]);
-            __fatal_error(error_buffer);
+            MICROPY_BOARD_FATAL_ERROR(error_buffer);
             #endif
             return false;
         }
@@ -376,7 +376,7 @@ bool __attribute__((optimize("Os"))) sdram_test(bool exhaustive) {
                 snprintf(error_buffer, sizeof(error_buffer),
                     "Address bus slow test failed at 0x%p expected 0x%x found 0x%x",
                     &mem_base[i], ((i % 2) ? pattern : antipattern), mem_base[i]);
-                __fatal_error(error_buffer);
+                MICROPY_BOARD_FATAL_ERROR(error_buffer);
                 #endif
                 return false;
             }
