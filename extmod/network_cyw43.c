@@ -36,10 +36,6 @@
 #include "extmod/network_cyw43.h"
 #include "modnetwork.h"
 
-#if LWIP_MDNS_RESPONDER
-#include "lwip/apps/mdns.h"
-#endif
-
 #if MICROPY_PY_NETWORK_CYW43_USE_LIB_DRIVER
 #include "lib/cyw43-driver/src/cyw43.h"
 #else
@@ -379,10 +375,6 @@ STATIC mp_obj_t network_cyw43_config(size_t n_args, const mp_obj_t *args, mp_map
                 cyw43_wifi_get_mac(self->cyw, self->itf, buf);
                 return mp_obj_new_bytes(buf, 6);
             }
-            case MP_QSTR_hostname: {
-                const char *buf = netif_get_hostname(&self->cyw->netif[self->itf]);
-                return mp_obj_new_str(buf, strlen(buf));
-            }
             case MP_QSTR_txpower: {
                 uint8_t buf[13];
                 memcpy(buf, "qtxpower\x00\x00\x00\x00\x00", 13);
@@ -448,21 +440,6 @@ STATIC mp_obj_t network_cyw43_config(size_t n_args, const mp_obj_t *args, mp_map
                         size_t len;
                         const char *str = mp_obj_str_get_data(e->value, &len);
                         cyw43_wifi_ap_set_password(self->cyw, len, (const uint8_t *)str);
-                        break;
-                    }
-                    case MP_QSTR_hostname: {
-                        size_t len;
-                        const char *str = mp_obj_str_get_data(e->value, &len);
-                        if (len >= sizeof(self->cyw->hostname)) {
-                            len = sizeof(self->cyw->hostname) - 1;     // truncate
-                        }
-                        strncpy(self->cyw->hostname, str, len);
-                        self->cyw->hostname[len] = '\0';
-                        netif_set_hostname(&self->cyw->netif[self->itf], self->cyw->hostname);
-                        #if LWIP_MDNS_RESPONDER
-                        // TODO better to call after IP address is set
-                        mdns_resp_rename_netif(&self->cyw->netif[self->itf], self->cyw->hostname);
-                        #endif
                         break;
                     }
                     case MP_QSTR_pm: {
