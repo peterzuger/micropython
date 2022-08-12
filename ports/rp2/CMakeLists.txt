@@ -16,8 +16,6 @@ endif()
 
 # Use the local tinyusb instead of the one in pico-sdk
 set(PICO_TINYUSB_PATH ${MICROPY_DIR}/lib/tinyusb)
-# Use the local cyw43_driver instead of the one in pico-sdk
-set(PICO_CYW43_DRIVER_PATH ${MICROPY_DIR}/lib/cyw43-driver)
 # Use the local lwip instead of the one in pico-sdk
 set(PICO_LWIP_PATH ${MICROPY_DIR}/lib/lwip)
 
@@ -51,6 +49,15 @@ endif()
 # A board may also have enabled additional components.
 set(MICROPY_SSL_MBEDTLS ON)
 
+# Use the local cyw43_driver instead of the one in pico-sdk
+if (MICROPY_PY_NETWORK_CYW43)
+    set(PICO_CYW43_DRIVER_PATH ${MICROPY_DIR}/lib/cyw43-driver)
+endif()
+
+# Necessary submodules for all boards.
+string(CONCAT GIT_SUBMODULES "${GIT_SUBMODULES} " lib/mbedtls)
+string(CONCAT GIT_SUBMODULES "${GIT_SUBMODULES} " lib/tinyusb)
+
 # Include component cmake fragments
 include(${MICROPY_DIR}/py/py.cmake)
 include(${MICROPY_DIR}/extmod/extmod.cmake)
@@ -74,7 +81,6 @@ set(MICROPY_SOURCE_LIB
     ${MICROPY_DIR}/lib/littlefs/lfs1_util.c
     ${MICROPY_DIR}/lib/littlefs/lfs2.c
     ${MICROPY_DIR}/lib/littlefs/lfs2_util.c
-    ${MICROPY_DIR}/lib/mbedtls_errors/mp_mbedtls_errors.c
     ${MICROPY_DIR}/lib/oofatfs/ff.c
     ${MICROPY_DIR}/lib/oofatfs/ffunicode.c
     ${MICROPY_DIR}/shared/netutils/dhcpserver.c
@@ -127,6 +133,7 @@ set(MICROPY_SOURCE_PORT
 
 set(MICROPY_SOURCE_QSTR
     ${MICROPY_SOURCE_PY}
+    ${MICROPY_DIR}/shared/readline/readline.c
     ${MICROPY_DIR}/shared/runtime/mpirq.c
     ${MICROPY_DIR}/shared/runtime/sys_stdio_mphal.c
     ${PROJECT_SOURCE_DIR}/machine_adc.c
@@ -206,6 +213,11 @@ if(MICROPY_PY_BLUETOOTH)
 endif()
 
 if(MICROPY_BLUETOOTH_NIMBLE)
+    string(CONCAT GIT_SUBMODULES "${GIT_SUBMODULES} " lib/mynewt-nimble)
+    if(NOT (${ECHO_SUBMODULES}) AND NOT EXISTS ${MICROPY_DIR}/lib/mynewt-nimble/nimble/host/include/host/ble_hs.h)
+        message(FATAL_ERROR " mynewt-nimble not initialized.\n Run 'make BOARD=${MICROPY_BOARD} submodules'")
+    endif()
+
     list(APPEND MICROPY_SOURCE_PORT mpnimbleport.c)
     target_compile_definitions(${MICROPY_TARGET} PRIVATE
         MICROPY_BLUETOOTH_NIMBLE=1
@@ -223,6 +235,9 @@ endif()
 
 if (MICROPY_PY_NETWORK_CYW43)
     string(CONCAT GIT_SUBMODULES "${GIT_SUBMODULES} " lib/cyw43-driver)
+    if((NOT (${ECHO_SUBMODULES})) AND NOT EXISTS ${MICROPY_DIR}/lib/cyw43-driver/src/cyw43.h)
+        message(FATAL_ERROR " cyw43-driver not initialized.\n Run 'make BOARD=${MICROPY_BOARD} submodules'")
+    endif()
 
     target_compile_definitions(${MICROPY_TARGET} PRIVATE
         MICROPY_PY_NETWORK_CYW43=1
@@ -267,6 +282,11 @@ if (MICROPY_PY_NETWORK_NINAW10)
 endif()
 
 if (MICROPY_PY_NETWORK_WIZNET5K)
+    string(CONCAT GIT_SUBMODULES "${GIT_SUBMODULES} " lib/wiznet5k)
+    if((NOT (${ECHO_SUBMODULES})) AND NOT EXISTS ${MICROPY_DIR}/lib/wiznet5k/README.md)
+        message(FATAL_ERROR " wiznet5k not initialized.\n Run 'make BOARD=${MICROPY_BOARD} submodules'")
+    endif()
+
     target_compile_definitions(${MICROPY_TARGET} PRIVATE
         MICROPY_PY_NETWORK_WIZNET5K=1
         WIZCHIP_PREFIXED_EXPORTS=1
@@ -301,8 +321,6 @@ if (MICROPY_PY_NETWORK_WIZNET5K)
     list(APPEND MICROPY_SOURCE_EXTMOD
         ${MICROPY_DIR}/extmod/network_wiznet5k.c
     )
-
-    string(CONCAT GIT_SUBMODULES "${GIT_SUBMODULES} " lib/wiznet5k)
 endif()
 
 # Add qstr sources for extmod and usermod, in case they are modified by components above.
@@ -312,7 +330,7 @@ list(APPEND MICROPY_SOURCE_QSTR
 )
 
 # Define mpy-cross flags
-set(MICROPY_CROSS_FLAGS -march=armv7m)
+set(MICROPY_CROSS_FLAGS -march=armv6m)
 
 # Set the frozen manifest file
 if (MICROPY_USER_FROZEN_MANIFEST)
@@ -330,12 +348,6 @@ target_sources(${MICROPY_TARGET} PRIVATE
 )
 
 target_link_libraries(${MICROPY_TARGET} micropy_lib_mbedtls)
-
-# Filter out library/error.c as we're using mp_mbedtls_errors.c instead.
-set_source_files_properties(${MICROPY_LIB_MBEDTLS_DIR}/library/error.c
-    TARGET_DIRECTORY micropy_lib_mbedtls
-    PROPERTIES HEADER_FILE_ONLY ON
-)
 
 target_link_libraries(${MICROPY_TARGET} usermod)
 
@@ -400,9 +412,11 @@ endif()
 
 pico_add_extra_outputs(${MICROPY_TARGET})
 
+pico_find_compiler(PICO_COMPILER_SIZE ${PICO_GCC_TRIPLE}-size)
+
 add_custom_command(TARGET ${MICROPY_TARGET}
     POST_BUILD
-    COMMAND arm-none-eabi-size --format=berkeley ${PROJECT_BINARY_DIR}/${MICROPY_TARGET}.elf
+    COMMAND ${PICO_COMPILER_SIZE} --format=berkeley ${PROJECT_BINARY_DIR}/${MICROPY_TARGET}.elf
     VERBATIM
 )
 

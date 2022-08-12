@@ -365,6 +365,11 @@ STATIC mp_obj_t network_cyw43_config(size_t n_args, const mp_obj_t *args, mp_map
                     return mp_obj_new_str((const char *)buf, len);
                 }
             }
+            #if MICROPY_PY_NETWORK_CYW43_USE_LIB_DRIVER
+            case MP_QSTR_security: {
+                return MP_OBJ_NEW_SMALL_INT(cyw43_wifi_ap_get_auth(self->cyw));
+            }
+            #endif
             case MP_QSTR_mac: {
                 uint8_t buf[6];
                 cyw43_wifi_get_mac(self->cyw, self->itf, buf);
@@ -376,6 +381,11 @@ STATIC mp_obj_t network_cyw43_config(size_t n_args, const mp_obj_t *args, mp_map
                 cyw43_ioctl(self->cyw, CYW43_IOCTL_GET_VAR, 13, buf, self->itf);
                 return MP_OBJ_NEW_SMALL_INT(nw_get_le32(buf) / 4);
             }
+            #if !MICROPY_PY_NETWORK_CYW43_USE_LIB_DRIVER
+            case MP_QSTR_hostname: {
+                return mp_obj_new_str(self->cyw->hostname, strlen(self->cyw->hostname));
+            }
+            #endif
             default:
                 mp_raise_ValueError(MP_ERROR_TEXT("unknown config param"));
         }
@@ -421,6 +431,10 @@ STATIC mp_obj_t network_cyw43_config(size_t n_args, const mp_obj_t *args, mp_map
                         }
                         break;
                     }
+                    case MP_QSTR_security: {
+                        cyw43_wifi_ap_set_auth(self->cyw, mp_obj_get_int(e->value));
+                        break;
+                    }
                     case MP_QSTR_key:
                     case MP_QSTR_password: {
                         size_t len;
@@ -444,6 +458,14 @@ STATIC mp_obj_t network_cyw43_config(size_t n_args, const mp_obj_t *args, mp_map
                         cyw43_ioctl(self->cyw, CYW43_IOCTL_SET_VAR, 9 + 4, buf, self->itf);
                         break;
                     }
+                    #if !MICROPY_PY_NETWORK_CYW43_USE_LIB_DRIVER
+                    case MP_QSTR_hostname: {
+                        const char *hostname = mp_obj_str_get_str(e->value);
+                        strncpy(self->cyw->hostname, hostname, MICROPY_BOARD_HOSTNAME_LENGTH);
+                        self->cyw->hostname[MICROPY_BOARD_HOSTNAME_LENGTH - 1] = 0;
+                        break;
+                    }
+                    #endif
                     default:
                         mp_raise_ValueError(MP_ERROR_TEXT("unknown config param"));
                 }
