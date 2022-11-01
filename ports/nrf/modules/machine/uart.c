@@ -106,7 +106,7 @@ static const nrfx_uart_t instance0 = NRFX_UART_INSTANCE(0);
 STATIC machine_hard_uart_buf_t machine_hard_uart_buf[1];
 
 STATIC const machine_hard_uart_obj_t machine_hard_uart_obj[] = {
-    {{&machine_hard_uart_type}, .p_uart = &instance0, .buf = &machine_hard_uart_buf[0]},
+    {{&machine_uart_type}, .p_uart = &instance0, .buf = &machine_hard_uart_buf[0]},
 };
 
 void uart_init0(void) {
@@ -370,15 +370,14 @@ STATIC const mp_stream_p_t uart_stream_p = {
     .is_text = false,
 };
 
-const mp_obj_type_t machine_hard_uart_type = {
-    { &mp_type_type },
-    .name = MP_QSTR_UART,
-    .print = machine_hard_uart_print,
-    .make_new = machine_hard_uart_make_new,
-    .getiter = mp_identity_getiter,
-    .iternext = mp_stream_unbuffered_iter,
-    .protocol = &uart_stream_p,
-    .locals_dict = (mp_obj_dict_t*)&machine_hard_uart_locals_dict,
-};
+MP_DEFINE_CONST_OBJ_TYPE(
+    machine_uart_type,
+    MP_QSTR_UART,
+    MP_TYPE_FLAG_ITER_IS_STREAM,
+    make_new, machine_hard_uart_make_new,
+    print, machine_hard_uart_print,
+    protocol, &uart_stream_p,
+    locals_dict, &machine_hard_uart_locals_dict
+    );
 
 #endif // MICROPY_PY_MACHINE_UART
