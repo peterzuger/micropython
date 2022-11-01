@@ -43,6 +43,7 @@
 #include "py/builtin.h"
 #include "py/repl.h"
 #include "py/gc.h"
+#include "py/objstr.h"
 #include "py/stackctrl.h"
 #include "py/mphal.h"
 #include "py/mpthread.h"
@@ -435,6 +436,17 @@ STATIC void set_sys_argv(char *argv[], int argc, int start_arg) {
     }
 }
 
+#if MICROPY_PY_SYS_EXECUTABLE
+extern mp_obj_str_t mp_sys_executable_obj;
+STATIC char executable_path[MICROPY_ALLOC_PATH_MAX];
+
+STATIC void sys_set_excecutable(char *argv0) {
+    if (realpath(argv0, executable_path)) {
+        mp_obj_str_set_data(&mp_sys_executable_obj, (byte *)executable_path, strlen(executable_path));
+    }
+}
+#endif
+
 #ifdef _WIN32
 #define PATHLIST_SEP_CHAR ';'
 #else
@@ -518,7 +530,7 @@ MP_NOINLINE int main_(int argc, char **argv) {
     {
         // Mount the host FS at the root of our internal VFS
         mp_obj_t args[2] = {
-            mp_type_vfs_posix.make_new(&mp_type_vfs_posix, 0, 0, NULL),
+            MP_OBJ_TYPE_GET_SLOT(&mp_type_vfs_posix, make_new)(&mp_type_vfs_posix, 0, 0, NULL),
             MP_OBJ_NEW_QSTR(MP_QSTR__slash_),
         };
         mp_vfs_mount(2, args, (mp_map_t *)&mp_const_empty_map);
@@ -597,6 +609,10 @@ MP_NOINLINE int main_(int argc, char **argv) {
     printf("    cur   %d\n", m_get_current_bytes_allocated());
     printf("    peak  %d\n", m_get_peak_bytes_allocated());
     */
+
+    #if MICROPY_PY_SYS_EXECUTABLE
+    sys_set_excecutable(argv[0]);
+    #endif
 
     const int NOTHING_EXECUTED = -2;
     int ret = NOTHING_EXECUTED;
