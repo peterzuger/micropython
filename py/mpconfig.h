@@ -1372,6 +1372,13 @@ typedef double mp_float_t;
 #define MICROPY_PY_SYS_EXC_INFO (0)
 #endif
 
+// Whether to provide "sys.executable", which is the absolute path to the
+// micropython binary
+// Intended for use on the "OS" ports (e.g. Unix)
+#ifndef MICROPY_PY_SYS_EXECUTABLE
+#define MICROPY_PY_SYS_EXECUTABLE (0)
+#endif
+
 // Whether to provide "sys.exit" function
 #ifndef MICROPY_PY_SYS_EXIT
 #define MICROPY_PY_SYS_EXIT (1)
@@ -1622,6 +1629,11 @@ typedef double mp_float_t;
 // Whether to provide the "machine.SoftSPI" class
 #ifndef MICROPY_PY_MACHINE_SOFTSPI
 #define MICROPY_PY_MACHINE_SOFTSPI (0)
+#endif
+
+// Whether to provide the "machine.Timer" class
+#ifndef MICROPY_PY_MACHINE_TIMER
+#define MICROPY_PY_MACHINE_TIMER (0)
 #endif
 
 // The default backlog value for socket.listen(backlog)
