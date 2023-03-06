@@ -37,7 +37,11 @@ uint32_t trng_random_u32(void);
 #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_FULL_FEATURES)
 
 // Memory allocation policies
+#if MICROPY_HW_SDRAM_AVAIL
+#define MICROPY_GC_STACK_ENTRY_TYPE         uint32_t
+#else
 #define MICROPY_GC_STACK_ENTRY_TYPE         uint16_t
+#endif
 #define MICROPY_ALLOC_PARSE_CHUNK_INIT      (32)
 #define MICROPY_ALLOC_PATH_MAX              (256)
 
@@ -88,6 +92,7 @@ uint32_t trng_random_u32(void);
 #define MICROPY_PY_MACHINE_SPI              (1)
 #define MICROPY_PY_MACHINE_SOFTSPI          (1)
 #define MICROPY_PY_MACHINE_TIMER            (1)
+#define MICROPY_SOFT_TIMER_TICKS_MS         systick_ms
 #define MICROPY_PY_ONEWIRE                  (1)
 #define MICROPY_PY_UPLATFORM                (1)
 
@@ -112,6 +117,10 @@ uint32_t trng_random_u32(void);
 #define MICROPY_PY_LWIP_ENTER   MICROPY_PY_PENDSV_ENTER
 #define MICROPY_PY_LWIP_REENTER MICROPY_PY_PENDSV_REENTER
 #define MICROPY_PY_LWIP_EXIT    MICROPY_PY_PENDSV_EXIT
+
+#ifndef MICROPY_PY_NETWORK_HOSTNAME_DEFAULT
+#define MICROPY_PY_NETWORK_HOSTNAME_DEFAULT "mpy-mimxrt"
+#endif
 
 #endif
 

@@ -1,13 +1,20 @@
-# Select the variant to build for.
+# Select the variant to build for:
+ifdef VARIANT_DIR
+# Custom variant path - remove trailing slash and get the final component of
+# the path as the variant name.
+VARIANT ?= $(notdir $(VARIANT_DIR:/=))
+else
+# If not given on the command line, then default to standard.
 VARIANT ?= standard
-
-# If the build directory is not given, make it reflect the variant name.
-BUILD ?= build-$(VARIANT)
-
 VARIANT_DIR ?= variants/$(VARIANT)
+endif
+
 ifeq ($(wildcard $(VARIANT_DIR)/.),)
 $(error Invalid VARIANT specified: $(VARIANT_DIR))
 endif
+
+# If the build directory is not given, make it reflect the variant name.
+BUILD ?= build-$(VARIANT)
 
 include ../../py/mkenv.mk
 -include mpconfigport.mk
@@ -294,7 +301,7 @@ $(TOP)/lib/libffi/configure: $(TOP)/lib/libffi/autogen.sh
 # docs and depending on makeinfo
 $(BUILD)/lib/libffi/include/ffi.h: $(TOP)/lib/libffi/configure
 	mkdir -p $(BUILD)/lib/libffi; cd $(BUILD)/lib/libffi; \
-	$(abspath $(TOP))/lib/libffi/configure $(CROSS_COMPILE_HOST) --prefix=$$PWD/out --disable-structs CC="$(CC)" CXX="$(CXX)" LD="$(LD)" CFLAGS="-Os -fomit-frame-pointer -fstrict-aliasing -ffast-math -fno-exceptions"; \
+	$(abspath $(TOP))/lib/libffi/configure $(CROSS_COMPILE_HOST) --prefix=$$PWD/out --disable-shared --disable-structs CC="$(CC)" CXX="$(CXX)" LD="$(LD)" CFLAGS="-Os -fomit-frame-pointer -fstrict-aliasing -ffast-math -fno-exceptions"; \
 	$(MAKE) install-exec-recursive; $(MAKE) -C include install-data-am
 
 PREFIX = /usr/local
