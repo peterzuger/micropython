@@ -1,11 +1,17 @@
-# Select the board to build for: if not given on the command line,
-# then default to pca10040.
+# Select the board to build for:
+ifdef BOARD_DIR
+# Custom board path - remove trailing slash and get the final component of
+# the path as the board name.
+BOARD ?= $(notdir $(BOARD_DIR:/=))
+else
+# If not given on the command line, then default to pca10040.
 BOARD ?= pca10040
+BOARD_DIR ?= boards/$(BOARD)
+endif
+
 ifeq ($(wildcard boards/$(BOARD)/.),)
 $(error Invalid BOARD specified)
 endif
-
-BOARD_DIR ?= boards/$(BOARD)
 
 # If SoftDevice is selected, try to use that one.
 SD ?=
@@ -509,6 +515,15 @@ nrfutil_dfu_deploy: $(BUILD)/$(OUTPUT_FILENAME).hex
 	$(Q)nrfutil dfu usb-serial -pkg $(BUILD)/$(OUTPUT_FILENAME)_dfu.zip -p $(NRFUTIL_PORT) -t 0
 
 deploy: nrfutil_dfu_deploy
+
+else ifeq ($(FLASHER), bossac)
+
+BOSSAC_PORT ?= /dev/ttyACM0
+BOSSAC_OFFSET ?= 0x16000
+
+deploy: $(BUILD)/$(OUTPUT_FILENAME).bin
+	$(Q)bossac -e -w --offset=$(BOSSAC_OFFSET) --port=$(BOSSAC_PORT) -i -d -U -R $<
+
 endif
 
 flash: deploy
