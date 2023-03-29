@@ -4,9 +4,11 @@
     ],
     "docs": "",
     "features": [],
-    "images": [],
+    "images": [
+        "nucleo_h723zg.jpg"
+    ],
     "mcu": "stm32h7",
-    "product": "Nucleo H743ZI2",
+    "product": "Nucleo H723ZG",
     "thumbnail": "",
     "url": "",
     "vendor": "ST Microelectronics"
