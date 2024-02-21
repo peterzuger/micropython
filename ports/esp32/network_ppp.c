@@ -43,6 +43,8 @@
 #include "lwip/dns.h"
 #include "netif/ppp/pppapi.h"
 
+#if defined(CONFIG_ESP_NETIF_TCPIP_LWIP) && defined(CONFIG_LWIP_PPP_SUPPORT)
+
 #define PPP_CLOSE_TIMEOUT_MS (4000)
 
 typedef struct _ppp_if_obj_t {
@@ -85,9 +87,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx) {
 STATIC mp_obj_t ppp_make_new(mp_obj_t stream) {
     mp_get_stream_raise(stream, MP_STREAM_OP_READ | MP_STREAM_OP_WRITE);
 
-    ppp_if_obj_t *self = m_new_obj_with_finaliser(ppp_if_obj_t);
-
-    self->base.type = &ppp_if_type;
+    ppp_if_obj_t *self = mp_obj_malloc_with_finaliser(ppp_if_obj_t, &ppp_if_type);
     self->stream = stream;
     self->active = false;
     self->connected = false;
@@ -341,3 +341,5 @@ MP_DEFINE_CONST_OBJ_TYPE(
     MP_TYPE_FLAG_NONE,
     locals_dict, &ppp_if_locals_dict
     );
+
+#endif
