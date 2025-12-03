@@ -557,9 +557,9 @@ mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blo
         }
         #endif
 
-        // make sure cache is flushed and invalidated so when DMA updates the RAM
-        // from reading the peripheral the CPU then reads the new data
-        MP_HAL_CLEANINVALIDATE_DCACHE(dest, num_blocks * SDCARD_BLOCK_SIZE);
+        // Flush the data cache to prevent the cache eviction process from
+        // flushing cache lines into RAM written by the DMA
+        MP_HAL_CLEAN_DCACHE(dest, num_blocks * SDCARD_BLOCK_SIZE);
 
         sdcard_reset_periph();
         #if MICROPY_HW_ENABLE_MMCARD
@@ -573,6 +573,10 @@ mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blo
         if (err == HAL_OK) {
             err = sdcard_wait_finished();
         }
+
+        // Invalidate data cache because Rx DMA's writing to physical memory
+        // makes it stale.
+        MP_HAL_INVALIDATE_DCACHE(dest, num_blocks * SDCARD_BLOCK_SIZE);
 
         #if SDIO_USE_GPDMA
         dma_deinit(&SDMMC_DMA);

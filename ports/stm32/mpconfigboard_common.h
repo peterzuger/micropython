@@ -795,9 +795,11 @@
 #define MP_HAL_CLEANINVALIDATE_DCACHE(addr, size) SCB_CleanInvalidateDCache_by_Addr((volatile void *)(addr), (size))
 // CLEAN will write back (flush) any dirty lines in this region to RAM.
 #define MP_HAL_CLEAN_DCACHE(addr, size) SCB_CleanDCache_by_Addr((volatile void *)(addr), (size))
+#define MP_HAL_INVALIDATE_DCACHE(addr, size) SCB_InvalidateDCache_by_Addr((volatile void *)(addr), (size))
 #else
 #define MP_HAL_CLEANINVALIDATE_DCACHE(addr, size)
 #define MP_HAL_CLEAN_DCACHE(addr, size)
+#define MP_HAL_INVALIDATE_DCACHE(addr, size)
 #endif
 
 #define MICROPY_HW_USES_BOOTLOADER (MICROPY_HW_VTOR != 0x08000000)
