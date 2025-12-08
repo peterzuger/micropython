@@ -516,6 +516,8 @@ static HAL_StatusTypeDef sdcard_common_checks(uint32_t block_num, uint32_t num_b
     return HAL_OK;
 }
 
+volatile uint8_t v;
+
 mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blocks) {
     HAL_StatusTypeDef err = sdcard_common_checks(block_num, num_blocks);
     if (err != HAL_OK) {
@@ -570,6 +572,13 @@ mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blo
         {
             err = HAL_SD_ReadBlocks_DMA(&sdmmc_handle.sd, dest, block_num, num_blocks);
         }
+
+        // an explicit access to the end of the dest buffer which is not read at
+        // this point (the DMA was just started) causing the cache to be read
+        // again. this could also be caused speculatively by the CM7 but this is
+        // very code/execution dependent
+        v = dest[500];
+
         if (err == HAL_OK) {
             err = sdcard_wait_finished();
         }
